@@ -1,0 +1,1916 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heat Pump Sizing Calculator</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 32px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            opacity: 0.85;
+            font-size: 14px;
+        }
+
+        .form-container {
+            padding: 30px;
+        }
+
+        .form-section {
+            margin-bottom: 28px;
+        }
+
+        .form-section h2 {
+            font-size: 16px;
+            color: #a3b1ff;
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+            font-weight: 600;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-size: 13px;
+            color: #8e99b8;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        input,
+        select {
+            padding: 10px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.07);
+            color: #e0e0e0;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        input.invalid {
+            border-color: #f44;
+            box-shadow: 0 0 0 3px rgba(255, 68, 68, 0.15);
+        }
+
+        .validation-msg {
+            font-size: 11px;
+            color: #f77;
+            margin-top: 3px;
+            display: none;
+        }
+
+        .validation-msg.show {
+            display: block;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            display: none;
+            margin-top: 30px;
+            padding: 25px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .results-section h2 {
+            color: #a3b1ff;
+            margin-bottom: 18px;
+            font-size: 20px;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .result-card {
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .result-card.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .result-card.highlight {
+            border-color: rgba(102, 126, 234, 0.4);
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .result-card .label {
+            font-size: 12px;
+            color: #8e99b8;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .result-card .value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #a3b1ff;
+        }
+
+        .result-card .value.warning {
+            color: #ffa726;
+        }
+
+        .result-card .value.success {
+            color: #66bb6a;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .chart-wrapper canvas {
+            max-height: 350px;
+        }
+
+        .day-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+
+        .day-selector label {
+            margin-bottom: 0;
+            color: #a3b1ff;
+            font-weight: 600;
+        }
+
+        .day-selector select,
+        .day-selector input {
+            width: auto;
+            min-width: 80px;
+        }
+
+        .day-selector button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 18px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .day-selector button:hover {
+            transform: translateY(-1px);
+        }
+
+        .error-box {
+            display: none;
+            padding: 16px;
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid rgba(255, 68, 68, 0.3);
+            border-radius: 8px;
+            color: #f88;
+            margin-top: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .error-box.show {
+            display: block;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 30px;
+            color: #a3b1ff;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .notes-box {
+            margin-top: 20px;
+            padding: 16px;
+            background: rgba(102, 126, 234, 0.08);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #b0b8d4;
+        }
+
+        .notes-box h3 {
+            color: #a3b1ff;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .notes-box ul {
+            margin-left: 18px;
+        }
+
+        /* ── Mode Toggle ─────────────────────────────────────────────── */
+        .mode-toggle {
+            display: flex;
+            gap: 10px;
+            padding: 20px 30px 0;
+        }
+
+        .mode-btn {
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: transparent;
+            color: #8e99b8;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        /* ── Chat UI ─────────────────────────────────────────────────── */
+        .chat-container {
+            padding: 20px 30px 30px;
+        }
+
+        .chat-messages {
+            min-height: 260px;
+            max-height: 380px;
+            overflow-y: auto;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            margin-bottom: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .chat-bubble {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .chat-bubble.assistant {
+            align-self: flex-start;
+            background: rgba(102, 126, 234, 0.15);
+            border: 1px solid rgba(102, 126, 234, 0.25);
+            color: #c5cbee;
+        }
+
+        .chat-bubble.user {
+            align-self: flex-end;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #e0e0e0;
+        }
+
+        .chat-bubble.system-note {
+            align-self: center;
+            background: rgba(102, 187, 106, 0.1);
+            border: 1px solid rgba(102, 187, 106, 0.2);
+            color: #a5d6a7;
+            font-size: 12px;
+            font-style: italic;
+            max-width: 95%;
+            text-align: center;
+        }
+
+        .chat-input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input-row input {
+            flex: 1;
+            padding: 11px 14px;
+        }
+
+        .chat-send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+        }
+
+        .chat-send-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* ── Gas vs HP Comparison ───────────────────────────────────── */
+        .gas-compare-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .gas-card {
+            border-radius: 12px;
+            padding: 24px 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .hp-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.1));
+            border-color: rgba(102, 126, 234, 0.35);
+        }
+
+        .boiler-card {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .gc-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .gc-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #8e99b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .gc-cost {
+            font-size: 36px;
+            font-weight: 800;
+            color: #a3b1ff;
+            line-height: 1;
+        }
+
+        .hp-card .gc-cost { color: #a3b1ff; }
+        .boiler-card .gc-cost { color: #e0e0e0; }
+
+        .gc-sub {
+            font-size: 12px;
+            color: #7a85a4;
+            margin-bottom: 12px;
+        }
+
+        .gc-cop {
+            font-size: 12px;
+            color: #8e99b8;
+            margin-bottom: 6px;
+        }
+
+        .gc-cop span {
+            font-weight: 700;
+            color: #a3b1ff;
+        }
+
+        .gc-co2 {
+            font-size: 12px;
+            color: #7a85a4;
+        }
+
+        .gas-saving-col {
+            text-align: center;
+            padding: 10px;
+        }
+
+        .gc-saving-label {
+            font-size: 11px;
+            color: #7a85a4;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .gc-saving {
+            font-size: 30px;
+            font-weight: 800;
+            color: #66bb6a;
+            line-height: 1.2;
+        }
+
+        .gc-co2-saving {
+            font-size: 14px;
+            font-weight: 700;
+            color: #a5d6a7;
+            margin-top: 14px;
+        }
+
+        .gc-equiv {
+            font-size: 11px;
+            color: #7a85a4;
+            margin-top: 6px;
+            line-height: 1.4;
+            max-width: 120px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        @media (max-width: 650px) {
+            .gas-compare-grid {
+                grid-template-columns: 1fr;
+            }
+            .gas-saving-col {
+                order: -1;
+            }
+        }
+
+        /* ── Flow Temp Comparison ───────────────────────────────────── */
+        .flowtemp-section {
+            margin-top: 28px;
+        }
+
+        .flowtemp-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 14px;
+        }
+
+        .flowtemp-card {
+            border-radius: 12px;
+            padding: 20px 16px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+            transition: border-color 0.3s;
+        }
+
+        .flowtemp-card.active {
+            border-color: rgba(102, 126, 234, 0.5);
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .flowtemp-card .ft-temp {
+            font-size: 32px;
+            font-weight: 800;
+            color: #a3b1ff;
+            line-height: 1;
+        }
+
+        .flowtemp-card.active .ft-temp {
+            color: #c5cbff;
+        }
+
+        .flowtemp-card .ft-label {
+            font-size: 11px;
+            color: #7a85a4;
+            margin: 6px 0 14px;
+            font-style: italic;
+        }
+
+        .flowtemp-card .ft-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 14px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #8e99b8;
+        }
+
+        .flowtemp-card.active .ft-badge {
+            background: rgba(102, 126, 234, 0.25);
+            color: #a3b1ff;
+        }
+
+        .flowtemp-card .ft-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 12px;
+        }
+
+        .flowtemp-card .ft-row .ft-rlabel {
+            color: #8e99b8;
+        }
+
+        .flowtemp-card .ft-row .ft-rval {
+            font-weight: 700;
+            color: #e0e0e0;
+        }
+
+        .flowtemp-card.active .ft-row .ft-rval {
+            color: #a3b1ff;
+        }
+
+        .ft-insight {
+            margin-top: 14px;
+            padding: 12px 16px;
+            background: rgba(102, 187, 106, 0.08);
+            border: 1px solid rgba(102, 187, 106, 0.2);
+            border-radius: 8px;
+            font-size: 13px;
+            color: #a5d6a7;
+            text-align: center;
+        }
+
+        @media (max-width: 650px) {
+            .flowtemp-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ── Scenario Cards ─────────────────────────────────────────── */
+        .scenario-section {
+            margin-top: 28px;
+        }
+
+        .scenario-section h2 {
+            color: #a3b1ff;
+            margin-bottom: 16px;
+            font-size: 20px;
+        }
+
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 14px;
+        }
+
+        .scenario-card {
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .scenario-card .sc-header {
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+
+        .scenario-card.undersized .sc-header {
+            background: rgba(239, 83, 80, 0.25);
+            color: #ef9a9a;
+            border-bottom: 1px solid rgba(239, 83, 80, 0.3);
+        }
+
+        .scenario-card.recommended .sc-header {
+            background: rgba(102, 126, 234, 0.25);
+            color: #a3b1ff;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .scenario-card.oversized .sc-header {
+            background: rgba(102, 187, 106, 0.2);
+            color: #a5d6a7;
+            border-bottom: 1px solid rgba(102, 187, 106, 0.25);
+        }
+
+        .scenario-card .sc-body {
+            padding: 14px 16px;
+        }
+
+        .scenario-card .sc-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 13px;
+        }
+
+        .scenario-card .sc-row:last-child {
+            border-bottom: none;
+        }
+
+        .scenario-card .sc-row .sc-label {
+            color: #8e99b8;
+        }
+
+        .scenario-card .sc-row .sc-val {
+            font-weight: 700;
+            color: #e0e0e0;
+        }
+
+        .scenario-card .sc-row .sc-val.red { color: #ef9a9a; }
+        .scenario-card .sc-row .sc-val.amber { color: #ffa726; }
+        .scenario-card .sc-row .sc-val.green { color: #a5d6a7; }
+
+        .sc-comfort-badge {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .sc-comfort-badge.bad {
+            background: rgba(239, 83, 80, 0.2);
+            color: #ef9a9a;
+            border: 1px solid rgba(239, 83, 80, 0.3);
+        }
+
+        .sc-comfort-badge.ok {
+            background: rgba(255, 167, 38, 0.15);
+            color: #ffa726;
+            border: 1px solid rgba(255, 167, 38, 0.25);
+        }
+
+        .sc-comfort-badge.good {
+            background: rgba(102, 187, 106, 0.15);
+            color: #a5d6a7;
+            border: 1px solid rgba(102, 187, 106, 0.25);
+        }
+
+        @media (max-width: 650px) {
+            .scenario-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 650px) {
+
+            .form-grid,
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .result-card.full-width {
+                grid-column: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔥 Heat Pump Sizing Calculator</h1>
+            <p>Calculate annual heating requirements and optimal heat pump sizing</p>
+        </div>
+
+        <!-- ── Mode Toggle ───────────────────────────────────────────── -->
+        <div class="mode-toggle">
+            <button type="button" class="mode-btn active" id="btnChat">💬 Chat</button>
+            <button type="button" class="mode-btn" id="btnExpert">⚙️ Expert Mode</button>
+        </div>
+
+        <!-- ── Chat UI ───────────────────────────────────────────────── -->
+        <div class="chat-container" id="chatPanel">
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-input-row">
+                <input type="text" id="chatInput" placeholder="Describe your building or ask a question…" autocomplete="off">
+                <button type="button" class="chat-send-btn" id="chatSendBtn">Send</button>
+            </div>
+        </div>
+
+        <div class="form-container" id="expertPanel" style="display:none">
+            <form id="heatPumpForm" novalidate>
+                <div class="form-section">
+                    <h2>Building Envelope — Walls</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="wallArea">Surface Area (m²)</label>
+                            <input type="number" id="wallArea" name="wallArea" step="0.1" min="0" max="5000"
+                                placeholder="e.g. 120" required>
+                            <span class="validation-msg" id="wallArea-msg"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="wallU">U-Value (W/m²K)</label>
+                            <input type="number" id="wallU" name="wallU" step="0.01" min="0.05" max="5"
+                                placeholder="e.g. 0.20" required>
+                            <span class="validation-msg" id="wallU-msg"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Building Envelope — Roof</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="roofArea">Surface Area (m²)</label>
+                            <input type="number" id="roofArea" name="roofArea" step="0.1" min="0" max="5000"
+                                placeholder="e.g. 80" required>
+                            <span class="validation-msg" id="roofArea-msg"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="roofU">U-Value (W/m²K)</label>
+                            <input type="number" id="roofU" name="roofU" step="0.01" min="0.05" max="5"
+                                placeholder="e.g. 0.15" required>
+                            <span class="validation-msg" id="roofU-msg"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Building Envelope — Floor</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="floorArea">Surface Area (m²)</label>
+                            <input type="number" id="floorArea" name="floorArea" step="0.1" min="0" max="5000"
+                                placeholder="e.g. 80" required>
+                            <span class="validation-msg" id="floorArea-msg"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="floorU">U-Value (W/m²K)</label>
+                            <input type="number" id="floorU" name="floorU" step="0.01" min="0.05" max="5"
+                                placeholder="e.g. 0.18" required>
+                            <span class="validation-msg" id="floorU-msg"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Location</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="latitude">Latitude</label>
+                            <input type="number" id="latitude" name="latitude" step="0.0001" min="-90" max="90"
+                                placeholder="e.g. 51.5074" required>
+                            <span class="validation-msg" id="latitude-msg"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="longitude">Longitude</label>
+                            <input type="number" id="longitude" name="longitude" step="0.0001" min="-180" max="180"
+                                placeholder="e.g. -0.1278" required>
+                            <span class="validation-msg" id="longitude-msg"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Heat Pump Specifications</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="flowTemp">Flow Temperature (°C)</label>
+                            <input type="number" id="flowTemp" name="flowTemp" step="1" min="20" max="80"
+                                placeholder="e.g. 45" required>
+                            <span class="validation-msg" id="flowTemp-msg"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="maxOutput">Maximum Heat Output (kW)</label>
+                            <input type="number" id="maxOutput" name="maxOutput" step="0.1" min="0.5" max="100"
+                                placeholder="e.g. 8" required>
+                            <span class="validation-msg" id="maxOutput-msg"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Property Settings</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="baseTemp">Base Temperature (°C)</label>
+                            <input type="number" id="baseTemp" name="baseTemp" step="0.1" min="-10" max="25"
+                                placeholder="e.g. 14" required>
+                            <span class="validation-msg" id="baseTemp-msg"></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="indoorTemp">Indoor Temperature (°C)</label>
+                            <input type="number" id="indoorTemp" name="indoorTemp" step="0.1" min="10" max="30"
+                                value="20" required>
+                            <span class="validation-msg" id="indoorTemp-msg"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Sizing Recommendation</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="thresholdHours">Max Acceptable Over-Capacity Hours</label>
+                            <input type="number" id="thresholdHours" name="thresholdHours" step="1" min="0" max="8760"
+                                value="24" placeholder="e.g. 24">
+                            <span class="validation-msg" id="thresholdHours-msg"></span>
+                        </div>
+                        <div class="form-group" style="justify-content:flex-end">
+                            <label style="font-size:11px;line-height:1.4;color:#7a85a4">
+                                The calculator will recommend a minimum heat pump size so that the
+                                heating load exceeds capacity for at most this many hours per year.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Running Cost</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="electricityPrice">Electricity Price (p/kWh)</label>
+                            <input type="number" id="electricityPrice" name="electricityPrice"
+                                   step="0.1" min="1" max="100" value="28.6" placeholder="e.g. 28.6">
+                        </div>
+                        <div class="form-group">
+                            <label for="gasPrice">Gas Price (p/kWh)</label>
+                            <input type="number" id="gasPrice" name="gasPrice"
+                                   step="0.1" min="1" max="50" value="5.5" placeholder="e.g. 5.5">
+                        </div>
+                        <div class="form-group full-width">
+                            <label style="font-size:11px;line-height:1.4;color:#7a85a4">
+                                UK averages: electricity ~28.6p/kWh, gas ~5.5p/kWh. Adjust to your actual tariffs.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="submit-btn" id="submitBtn">Calculate Heat Requirements</button>
+            </form>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Fetching weather data from PVGIS and calculating…</p>
+            </div>
+
+            <div class="error-box" id="error"></div>
+        </div><!-- /expertPanel -->
+
+            <!-- ── Results ────────────────────────────────────────────── -->
+            <div class="results-section" id="results">
+                <h2>📊 Results</h2>
+
+                <div class="result-grid">
+                    <div class="result-card">
+                        <div class="label">Annual Heat Energy</div>
+                        <div class="value" id="totalHeat">—</div>
+                    </div>
+                    <div class="result-card">
+                        <div class="label">Electrical Energy Used</div>
+                        <div class="value" id="electricalEnergy">—</div>
+                    </div>
+                    <div class="result-card">
+                        <div class="label">Average CoP</div>
+                        <div class="value" id="avgCop">—</div>
+                    </div>
+                    <div class="result-card">
+                        <div class="label">Peak Heat Load</div>
+                        <div class="value" id="peakLoad">—</div>
+                    </div>
+                    <div class="result-card">
+                        <div class="label">Hours Exceeding Capacity</div>
+                        <div class="value" id="exceedingHours">—</div>
+                    </div>
+                    <div class="result-card highlight">
+                        <div class="label">Recommended Minimum Heat Pump Size</div>
+                        <div class="value success" id="recommendedSize">—</div>
+                    </div>
+                    <div class="result-card highlight">
+                        <div class="label">Estimated Annual Running Cost</div>
+                        <div class="value success" id="annualCost">—</div>
+                    </div>
+                </div>
+
+                <!-- ── Gas vs Heat Pump Comparison ──────────────────────── -->
+                <div class="gas-compare-section" id="gasCompareSection" style="margin-top:28px;">
+                    <h2 style="color:#a3b1ff;margin-bottom:16px;font-size:20px;">⚡ vs 🔥 Heat Pump vs Gas Boiler</h2>
+                    <div class="gas-compare-grid">
+                        <div class="gas-card hp-card">
+                            <div class="gc-icon">⚡</div>
+                            <div class="gc-title">Heat Pump</div>
+                            <div class="gc-cost" id="gcHpCost">—</div>
+                            <div class="gc-sub">per year</div>
+                            <div class="gc-cop">Avg CoP <span id="gcHpCop">—</span></div>
+                            <div class="gc-co2" id="gcHpCo2">— kg CO₂/yr</div>
+                        </div>
+                        <div class="gas-saving-col">
+                            <div class="gc-saving-label">you save</div>
+                            <div class="gc-saving" id="gcSaving">—</div>
+                            <div class="gc-saving-label">per year</div>
+                            <div class="gc-co2-saving" id="gcCo2Saving">—</div>
+                            <div class="gc-saving-label" style="margin-top:2px">less CO₂</div>
+                            <div class="gc-equiv" id="gcEquiv">—</div>
+                        </div>
+                        <div class="gas-card boiler-card">
+                            <div class="gc-icon">🔥</div>
+                            <div class="gc-title">Gas Boiler</div>
+                            <div class="gc-cost" id="gcGasCost">—</div>
+                            <div class="gc-sub">per year</div>
+                            <div class="gc-cop">Efficiency <span id="gcBoilerEff">88%</span></div>
+                            <div class="gc-co2" id="gcGasCo2">— kg CO₂/yr</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Flow Temperature Comparison ──────────────────────── -->
+                <div class="flowtemp-section" id="flowtempSection">
+                    <h2 style="color:#a3b1ff;margin-bottom:16px;font-size:20px;">🌡️ Flow Temperature Comparison</h2>
+                    <div class="flowtemp-grid" id="flowtempGrid">
+                        <!-- populated by renderFlowTempComparison() -->
+                    </div>
+                    <div class="ft-insight" id="ftInsight" style="display:none;"></div>
+                </div>
+
+                <!-- ── Scenario Comparison ───────────────────────────────── -->
+                <div class="scenario-section" id="scenarioSection">
+                    <h2>⚖️ Scenario Comparison</h2>
+                    <div class="scenario-grid" id="scenarioGrid">
+                        <!-- populated by buildScenarioCards() -->
+                    </div>
+                </div>
+
+                <!-- Heat Loss Visualisation -->
+<div style="margin-bottom:24px;">
+    <h2 style="color:#a3b1ff;margin-bottom:14px;font-size:18px;">🏠 Heat Loss Breakdown</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:center;">
+        <div>
+            <svg id="buildingSvg" viewBox="0 0 300 260" width="100%" style="max-width:340px;display:block;margin:0 auto;">
+                <polygon id="svgRoof" points="150,20 280,110 20,110" fill="#2a2a5a" stroke="#667eea" stroke-width="2"/>
+                <text x="150" y="80" text-anchor="middle" font-size="12" fill="#a3b1ff" font-family="sans-serif">Roof</text>
+                <text id="svgRoofVal" x="150" y="96" text-anchor="middle" font-size="10" fill="#8e99b8" font-family="sans-serif">—</text>
+                <rect id="svgWalls" x="20" y="110" width="260" height="120" fill="#1a1a3e" stroke="#667eea" stroke-width="2"/>
+                <text x="150" y="168" text-anchor="middle" font-size="12" fill="#a3b1ff" font-family="sans-serif">Walls</text>
+                <text id="svgWallsVal" x="150" y="184" text-anchor="middle" font-size="10" fill="#8e99b8" font-family="sans-serif">—</text>
+                <rect id="svgFloor" x="20" y="230" width="260" height="22" fill="#0f0f2e" stroke="#667eea" stroke-width="2"/>
+                <text x="150" y="244" text-anchor="middle" font-size="10" fill="#a3b1ff" font-family="sans-serif">Floor</text>
+                <text id="svgFloorVal" x="260" y="244" text-anchor="end" font-size="9" fill="#8e99b8" font-family="sans-serif">—</text>
+                <g id="heatArrows" opacity="0">
+                    <line x1="150" y1="20" x2="150" y2="2" stroke="#ff6b6b" stroke-width="2" marker-end="url(#arrowRed)"/>
+                    <line x1="20" y1="160" x2="2" y2="160" stroke="#ff6b6b" stroke-width="2" marker-end="url(#arrowRed)"/>
+                    <line x1="280" y1="160" x2="298" y2="160" stroke="#ff6b6b" stroke-width="2" marker-end="url(#arrowRed)"/>
+                    <line x1="150" y1="252" x2="150" y2="260" stroke="#ff6b6b" stroke-width="1.5" marker-end="url(#arrowRed)"/>
+                </g>
+                <defs>
+                    <marker id="arrowRed" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                        <path d="M0,0 L6,3 L0,6 Z" fill="#ff6b6b"/>
+                    </marker>
+                </defs>
+            </svg>
+        </div>
+        <div id="heatLossBars" style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+                    <span style="font-size:13px;color:#a3b1ff;font-weight:600;">Roof</span>
+                    <span id="roofPct" style="font-size:13px;color:#8e99b8;">—</span>
+                </div>
+                <div style="background:rgba(255,255,255,0.08);border-radius:4px;height:10px;overflow:hidden;">
+                    <div id="roofBar" style="height:100%;width:0%;border-radius:4px;transition:width 0.8s ease,background 0.8s ease;"></div>
+                </div>
+            </div>
+            <div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+                    <span style="font-size:13px;color:#a3b1ff;font-weight:600;">Walls</span>
+                    <span id="wallsPct" style="font-size:13px;color:#8e99b8;">—</span>
+                </div>
+                <div style="background:rgba(255,255,255,0.08);border-radius:4px;height:10px;overflow:hidden;">
+                    <div id="wallsBar" style="height:100%;width:0%;border-radius:4px;transition:width 0.8s ease,background 0.8s ease;"></div>
+                </div>
+            </div>
+            <div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+                    <span style="font-size:13px;color:#a3b1ff;font-weight:600;">Floor</span>
+                    <span id="floorPct" style="font-size:13px;color:#8e99b8;">—</span>
+                </div>
+                <div style="background:rgba(255,255,255,0.08);border-radius:4px;height:10px;overflow:hidden;">
+                    <div id="floorBar" style="height:100%;width:0%;border-radius:4px;transition:width 0.8s ease,background 0.8s ease;"></div>
+                </div>
+            </div>
+            <div style="margin-top:6px;padding:10px 14px;background:rgba(255,255,255,0.04);border-radius:8px;border:1px solid rgba(255,255,255,0.08);">
+                <div style="font-size:11px;color:#8e99b8;margin-bottom:2px;">Total heat loss coefficient (UA)</div>
+                <div id="uaValue" style="font-size:20px;font-weight:700;color:#a3b1ff;">— W/K</div>
+            </div>
+            <div style="font-size:11px;color:#7a85a4;line-height:1.5;">
+                Colour shows heat loss intensity — <span style="color:#4fc3f7">blue</span> = well insulated, <span style="color:#ffa726">amber</span> = average, <span style="color:#ef5350">red</span> = high loss.
+            </div>
+        </div>
+    </div>
+</div>
+
+                <!-- Monthly bar chart -->
+                <div class="chart-wrapper">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+
+                <!-- Day selector and daily chart -->
+                <h2 style="margin-top:16px">📅 Daily Detail</h2>
+                <div class="day-selector">
+                    <label for="dayMonth">Month:</label>
+                    <select id="dayMonth">
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                    </select>
+                    <label for="dayDay">Day:</label>
+                    <input type="number" id="dayDay" min="1" max="31" value="15" style="width:60px">
+                    <button type="button" id="showDayBtn">Show Day</button>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="dailyChart"></canvas>
+                </div>
+
+                <!-- Indoor temp chart for undersized scenario -->
+                <h2 style="margin-top:16px">🌡️ Indoor Temperature (Undersized Scenario)</h2>
+                <div class="chart-wrapper">
+                    <canvas id="indoorTempChart"></canvas>
+                </div>
+
+                <div class="notes-box">
+                    <h3>About the Indoor Temperature Calculation (Part 3)</h3>
+                    <ul>
+                        <li>When the heat pump can't deliver the full heating load, the indoor temperature drops below
+                            the setpoint.</li>
+                        <li>The actual indoor temperature is estimated as:
+                            <code>T_indoor = T_outdoor + (Q_delivered × 1000) / UA</code>, where UA is the total thermal
+                            transmittance.</li>
+                        <li><strong>Limitations:</strong> This is a steady-state model. A more accurate simulation would
+                            need:
+                            <ul>
+                                <li>Thermal mass of the building (brick, concrete, etc.) to model heat storage</li>
+                                <li>Ventilation losses (air changes per hour × volume)</li>
+                                <li>Solar gains through windows</li>
+                                <li>Internal gains from occupants and appliances</li>
+                            </ul>
+                        </li>
+                        <li>With thermal mass data, a dynamic model could show a gradual temperature decay rather than
+                            the instantaneous drop shown here.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ─── Mode Toggle ──────────────────────────────────────────────────
+        document.getElementById('btnChat').addEventListener('click', () => {
+            document.getElementById('chatPanel').style.display = '';
+            document.getElementById('expertPanel').style.display = 'none';
+            document.getElementById('btnChat').classList.add('active');
+            document.getElementById('btnExpert').classList.remove('active');
+        });
+
+        document.getElementById('btnExpert').addEventListener('click', () => {
+            document.getElementById('chatPanel').style.display = 'none';
+            document.getElementById('expertPanel').style.display = '';
+            document.getElementById('btnChat').classList.remove('active');
+            document.getElementById('btnExpert').classList.add('active');
+        });
+
+        // ─── Chat ─────────────────────────────────────────────────────────
+        let chatHistory = [];
+
+        function appendBubble(text, role) {
+            const msgs = document.getElementById('chatMessages');
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${role}`;
+            bubble.textContent = text;
+            msgs.appendChild(bubble);
+            msgs.scrollTop = msgs.scrollHeight;
+        }
+
+        async function sendChat(userText) {
+            if (!userText.trim()) return;
+
+            appendBubble(userText, 'user');
+            chatHistory.push({ role: 'user', content: userText });
+
+            const sendBtn = document.getElementById('chatSendBtn');
+            const input = document.getElementById('chatInput');
+            sendBtn.disabled = true;
+            input.disabled = true;
+
+            try {
+                const res = await fetch('/api/interpret', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: userText, history: chatHistory.slice(0, -1) })
+                });
+
+                const data = await res.json();
+
+                if (data.error) {
+                    appendBubble('Sorry, something went wrong: ' + data.error, 'assistant');
+                    return;
+                }
+
+                if (data.type === 'ready') {
+                    // AI has enough info — populate form and run calculation
+                    chatHistory.push({ role: 'assistant', content: JSON.stringify(data) });
+                    appendBubble(
+                        `Great — I have everything I need! Running the calculation now…\n\n${data.summary || ''}`,
+                        'system-note'
+                    );
+                    populateFormAndCalculate(data.params);
+                } else {
+                    chatHistory.push({ role: 'assistant', content: data.text });
+                    appendBubble(data.text, 'assistant');
+                }
+
+            } catch (err) {
+                appendBubble('Network error — please try again.', 'assistant');
+            } finally {
+                sendBtn.disabled = false;
+                input.disabled = false;
+                input.focus();
+            }
+        }
+
+        function populateFormAndCalculate(params) {
+            const fields = ['wallArea','wallU','roofArea','roofU','floorArea','floorU',
+                            'latitude','longitude','flowTemp','maxOutput','baseTemp',
+                            'indoorTemp','electricityPrice','thresholdHours'];
+            for (const f of fields) {
+                const el = document.getElementById(f);
+                if (el && params[f] !== undefined) el.value = params[f];
+            }
+            // Trigger calculation via the form submit event
+            document.getElementById('heatPumpForm').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+            // Switch to expert view so results make sense with the filled form
+            document.getElementById('btnExpert').click();
+        }
+
+        document.getElementById('chatSendBtn').addEventListener('click', () => {
+            const input = document.getElementById('chatInput');
+            const text = input.value;
+            input.value = '';
+            sendChat(text);
+        });
+
+        document.getElementById('chatInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const text = e.target.value;
+                e.target.value = '';
+                sendChat(text);
+            }
+        });
+
+        // Opening greeting from assistant
+        appendBubble(
+            "Hi! I can help size your heat pump. Tell me about your building — where it is, roughly how big it is, and what heat pump you're considering. Or just start with your location and I'll guide you through the rest.",
+            'assistant'
+        );
+
+        // ─── State ────────────────────────────────────────────────────────
+        let lastResult = null;
+        let monthlyChartInstance = null;
+        let dailyChartInstance = null;
+        let indoorTempChartInstance = null;
+
+        // ─── Validation rules ─────────────────────────────────────────────
+        const validationRules = {
+            wallArea: { min: 0, max: 5000, label: 'Wall area' },
+            wallU: { min: 0.05, max: 5, label: 'Wall U-value' },
+            roofArea: { min: 0, max: 5000, label: 'Roof area' },
+            roofU: { min: 0.05, max: 5, label: 'Roof U-value' },
+            floorArea: { min: 0, max: 5000, label: 'Floor area' },
+            floorU: { min: 0.05, max: 5, label: 'Floor U-value' },
+            latitude: { min: -90, max: 90, label: 'Latitude' },
+            longitude: { min: -180, max: 180, label: 'Longitude' },
+            flowTemp: { min: 20, max: 80, label: 'Flow temperature' },
+            maxOutput: { min: 0.5, max: 100, label: 'Max output' },
+            baseTemp: { min: -10, max: 25, label: 'Base temperature' },
+            indoorTemp: { min: 10, max: 30, label: 'Indoor temperature' },
+        };
+
+        function validateField(input) {
+            const name = input.name || input.id;
+            const rule = validationRules[name];
+            const msgEl = document.getElementById(`${name}-msg`);
+            if (!rule || !msgEl) return true;
+
+            const val = parseFloat(input.value);
+            let msg = '';
+
+            if (input.value === '' || isNaN(val)) {
+                msg = `${rule.label} is required.`;
+            } else if (val < rule.min || val > rule.max) {
+                msg = `${rule.label} should be between ${rule.min} and ${rule.max}.`;
+            }
+
+            if (msg) {
+                input.classList.add('invalid');
+                msgEl.textContent = msg;
+                msgEl.classList.add('show');
+                return false;
+            } else {
+                input.classList.remove('invalid');
+                msgEl.textContent = '';
+                msgEl.classList.remove('show');
+                return true;
+            }
+        }
+
+        // Cross-field validation
+        function validateCrossFields() {
+            const base = parseFloat(document.getElementById('baseTemp').value);
+            const indoor = parseFloat(document.getElementById('indoorTemp').value);
+            if (!isNaN(base) && !isNaN(indoor) && base >= indoor) {
+                const msgEl = document.getElementById('baseTemp-msg');
+                msgEl.textContent = 'Base temperature must be lower than indoor temperature.';
+                msgEl.classList.add('show');
+                document.getElementById('baseTemp').classList.add('invalid');
+                return false;
+            }
+            return true;
+        }
+
+        // Attach live validation
+        document.querySelectorAll('#heatPumpForm input').forEach(input => {
+            input.addEventListener('blur', () => validateField(input));
+            input.addEventListener('input', () => {
+                if (input.classList.contains('invalid')) validateField(input);
+            });
+        });
+
+        // ─── Form Submit ──────────────────────────────────────────────────
+        document.getElementById('heatPumpForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Validate all
+            let allValid = true;
+            document.querySelectorAll('#heatPumpForm input[required]').forEach(input => {
+                if (!validateField(input)) allValid = false;
+            });
+            if (!validateCrossFields()) allValid = false;
+            if (!allValid) return;
+
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            Object.keys(data).forEach(key => { data[key] = parseFloat(data[key]); });
+
+            const resultsEl = document.getElementById('results');
+            const errorEl = document.getElementById('error');
+            const loadingEl = document.getElementById('loading');
+            const submitBtn = document.getElementById('submitBtn');
+
+            resultsEl.classList.remove('show');
+            errorEl.classList.remove('show');
+            loadingEl.classList.add('show');
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/calculate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+
+                lastResult = result;
+
+                // Populate result cards
+                document.getElementById('totalHeat').textContent =
+                    `${result.totalHeatEnergy.toFixed(0)} kWh`;
+                document.getElementById('electricalEnergy').textContent =
+                    `${result.electricalEnergy.toFixed(0)} kWh`;
+                document.getElementById('avgCop').textContent =
+                    result.averageCoP.toFixed(2);
+                document.getElementById('peakLoad').textContent =
+                    `${result.peakHeatLoad.toFixed(2)} kW`;
+
+                const exceedEl = document.getElementById('exceedingHours');
+                exceedEl.textContent = `${result.hoursExceedingCapacity} hours`;
+                exceedEl.className = 'value' + (result.hoursExceedingCapacity > 100 ? ' warning' : '');
+
+                document.getElementById('recommendedSize').textContent =
+                    `${result.recommendedSize.toFixed(1)} kW`;
+
+                document.getElementById('annualCost').textContent =
+                    `£${result.annualCostPounds.toFixed(0)} / year`;
+
+                // Show results section BEFORE rendering charts so Chart.js can calculate dimensions
+                resultsEl.classList.add('show');
+                renderHeatLossVisual(Object.fromEntries(new FormData(document.getElementById('heatPumpForm'))));
+
+                // Scenario comparison cards
+                renderGasComparison(result, data);
+                renderFlowTempComparison(result, data);
+                buildScenarioCards(result);
+
+                // Monthly chart
+                renderMonthlyChart(result);
+
+                // Auto-show a winter day
+                document.getElementById('dayMonth').value = '1';
+                document.getElementById('dayDay').value = '15';
+                renderDailyChart(result, 1, 15);
+
+            } catch (error) {
+                errorEl.innerHTML = `<strong>Error:</strong> ${error.message}`;
+                errorEl.classList.add('show');
+            } finally {
+                loadingEl.classList.remove('show');
+                submitBtn.disabled = false;
+            }
+        });
+
+        // ─── Show Day button ──────────────────────────────────────────────
+        document.getElementById('showDayBtn').addEventListener('click', () => {
+            if (!lastResult) return;
+            const month = parseInt(document.getElementById('dayMonth').value);
+            const day = parseInt(document.getElementById('dayDay').value);
+            renderDailyChart(lastResult, month, day);
+        });
+
+        // ─── Scenario Cards ───────────────────────────────────────────────
+        function computeScenarioStats(hourlyResults, maxOutput, electricityPricePennies) {
+            let electricalEnergy = 0;
+            let hoursExceeding = 0;
+
+            for (const h of hourlyResults) {
+                if (h.heatLoss > 0 && h.cop > 0) {
+                    const delivered = Math.min(h.heatLoss, maxOutput);
+                    electricalEnergy += delivered / h.cop;
+                    if (h.heatLoss > maxOutput) hoursExceeding++;
+                }
+            }
+
+            const annualCost = (electricalEnergy * electricityPricePennies) / 100;
+            return { hoursExceeding, electricalEnergy, annualCost };
+        }
+
+        function buildScenarioCards(result) {
+            const rec = result.recommendedSize;
+            const pricePennies = result.electricityPricePennies || 28.6;
+
+            // Round to nearest 0.5 kW
+            const roundHalf = (v) => Math.round(v * 2) / 2;
+
+            const scenarios = [
+                {
+                    id: 'undersized',
+                    label: '📉 Undersized',
+                    size: Math.max(0.5, roundHalf(rec * 0.75)),
+                    cssClass: 'undersized'
+                },
+                {
+                    id: 'recommended',
+                    label: '✅ Recommended',
+                    size: rec,
+                    cssClass: 'recommended'
+                },
+                {
+                    id: 'oversized',
+                    label: '📈 Oversized',
+                    size: roundHalf(rec * 1.35) || rec + 2,
+                    cssClass: 'oversized'
+                }
+            ];
+
+            const grid = document.getElementById('scenarioGrid');
+            grid.innerHTML = '';
+
+            for (const s of scenarios) {
+                const stats = computeScenarioStats(result.hourlyResults, s.size, pricePennies);
+
+                // Comfort classification
+                let comfortLabel, comfortClass;
+                if (stats.hoursExceeding > 200) {
+                    comfortLabel = 'Uncomfortable';
+                    comfortClass = 'bad';
+                } else if (stats.hoursExceeding > result.thresholdHours) {
+                    comfortLabel = 'Borderline';
+                    comfortClass = 'ok';
+                } else {
+                    comfortLabel = 'Comfortable';
+                    comfortClass = 'good';
+                }
+
+                // Colour for hours
+                const hoursColour = stats.hoursExceeding > 200 ? 'red'
+                    : stats.hoursExceeding > result.thresholdHours ? 'amber'
+                    : 'green';
+
+                grid.insertAdjacentHTML('beforeend', `
+                    <div class="scenario-card ${s.cssClass}">
+                        <div class="sc-header">${s.label}</div>
+                        <div class="sc-body">
+                            <div class="sc-row">
+                                <span class="sc-label">Heat pump size</span>
+                                <span class="sc-val">${s.size.toFixed(1)} kW</span>
+                            </div>
+                            <div class="sc-row">
+                                <span class="sc-label">Cold hours / year</span>
+                                <span class="sc-val ${hoursColour}">${stats.hoursExceeding} hrs</span>
+                            </div>
+                            <div class="sc-row">
+                                <span class="sc-label">Electrical energy</span>
+                                <span class="sc-val">${stats.electricalEnergy.toFixed(0)} kWh</span>
+                            </div>
+                            <div class="sc-row">
+                                <span class="sc-label">Annual running cost</span>
+                                <span class="sc-val">£${stats.annualCost.toFixed(0)} / yr</span>
+                            </div>
+                            <div>
+                                <span class="sc-comfort-badge ${comfortClass}">${comfortLabel}</span>
+                            </div>
+                        </div>
+                    </div>
+                `);
+            }
+        }
+
+        // ─── Monthly Chart ────────────────────────────────────────────────
+        function renderMonthlyChart(result) {
+            const ctx = document.getElementById('monthlyChart').getContext('2d');
+            if (monthlyChartInstance) monthlyChartInstance.destroy();
+
+            monthlyChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: result.monthNames,
+                    datasets: [
+                        {
+                            label: 'Heat Energy (kWh)',
+                            data: result.monthlyHeat,
+                            backgroundColor: 'rgba(255, 152, 0, 0.6)',
+                            borderColor: 'rgba(255, 152, 0, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Electrical Energy (kWh)',
+                            data: result.monthlyElectrical,
+                            backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                            borderColor: 'rgba(102, 126, 234, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: { display: true, text: 'Monthly Energy Breakdown', color: '#a3b1ff', font: { size: 15 } },
+                        legend: { labels: { color: '#b0b8d4' } }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#8e99b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        y: {
+                            ticks: { color: '#8e99b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            title: { display: true, text: 'Energy (kWh)', color: '#8e99b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ─── Daily Chart ──────────────────────────────────────────────────
+        function renderDailyChart(result, month, day) {
+            const dayData = result.hourlyResults.filter(h => h.month === month && h.day === day);
+
+            if (dayData.length === 0) {
+                alert(`No data found for month ${month}, day ${day}. This day may not exist in the TMY dataset.`);
+                return;
+            }
+
+            const hours = dayData.map(h => `${String(h.hour).padStart(2, '0')}:00`);
+            const outdoorTemps = dayData.map(h => h.outdoorTemp);
+            const electricalUse = dayData.map(h => h.electricalUse);
+            const indoorTemps = dayData.map(h => h.indoorTempActual);
+            const maxOutput = parseFloat(document.getElementById('maxOutput').value);
+
+            // Daily chart: temperature + electrical
+            const ctx = document.getElementById('dailyChart').getContext('2d');
+            if (dailyChartInstance) dailyChartInstance.destroy();
+
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+
+            dailyChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: hours,
+                    datasets: [
+                        {
+                            label: 'Outdoor Temp (°C)',
+                            data: outdoorTemps,
+                            borderColor: '#42a5f5',
+                            backgroundColor: 'rgba(66, 165, 245, 0.1)',
+                            fill: true,
+                            yAxisID: 'y',
+                            tension: 0.3,
+                            pointRadius: 3
+                        },
+                        {
+                            label: 'Electrical Use (kW)',
+                            data: electricalUse,
+                            borderColor: '#ffa726',
+                            backgroundColor: 'rgba(255, 167, 38, 0.1)',
+                            fill: true,
+                            yAxisID: 'y1',
+                            tension: 0.3,
+                            pointRadius: 3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Hourly Detail — ${day} ${monthNames[month - 1]}`,
+                            color: '#a3b1ff',
+                            font: { size: 15 }
+                        },
+                        legend: { labels: { color: '#b0b8d4' } }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#8e99b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: 'Temperature (°C)', color: '#42a5f5' },
+                            ticks: { color: '#42a5f5' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            title: { display: true, text: 'Electrical (kW)', color: '#ffa726' },
+                            ticks: { color: '#ffa726' },
+                            grid: { drawOnChartArea: false }
+                        }
+                    }
+                }
+            });
+
+            // Indoor temp chart
+            const ctx2 = document.getElementById('indoorTempChart').getContext('2d');
+            if (indoorTempChartInstance) indoorTempChartInstance.destroy();
+
+            const indoorSetpoint = parseFloat(document.getElementById('indoorTemp').value) || 20;
+            const setpointLine = dayData.map(() => indoorSetpoint);
+
+            indoorTempChartInstance = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: hours,
+                    datasets: [
+                        {
+                            label: 'Actual Indoor Temp (°C)',
+                            data: indoorTemps,
+                            borderColor: '#ef5350',
+                            backgroundColor: 'rgba(239, 83, 80, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 3
+                        },
+                        {
+                            label: 'Setpoint (°C)',
+                            data: setpointLine,
+                            borderColor: 'rgba(102, 187, 106, 0.7)',
+                            borderDash: [6, 4],
+                            pointRadius: 0,
+                            fill: false
+                        },
+                        {
+                            label: 'Outdoor Temp (°C)',
+                            data: outdoorTemps,
+                            borderColor: 'rgba(66, 165, 245, 0.5)',
+                            borderDash: [4, 4],
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Indoor Temperature — ${day} ${monthNames[month - 1]} (Heat Pump: ${maxOutput} kW)`,
+                            color: '#a3b1ff',
+                            font: { size: 15 }
+                        },
+                        legend: { labels: { color: '#b0b8d4' } },
+                        subtitle: {
+                            display: true,
+                            text: 'Red line drops below setpoint when heat pump is undersized for the load',
+                            color: '#7a85a4',
+                            font: { size: 11, style: 'italic' }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#8e99b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        y: {
+                            title: { display: true, text: 'Temperature (°C)', color: '#8e99b8' },
+                            ticks: { color: '#8e99b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+        // ─── Flow Temperature Comparison ──────────────────────────────────
+        function clientGetCoP(flowTemp, outdoorTemp) {
+            const d = flowTemp - outdoorTemp;
+            if (flowTemp <= 35) {
+                if (d <= 20) return 4.5; if (d <= 30) return 4.0; if (d <= 40) return 3.5; return 3.0;
+            } else if (flowTemp <= 45) {
+                if (d <= 20) return 4.0; if (d <= 30) return 3.5; if (d <= 40) return 3.0; return 2.5;
+            } else if (flowTemp <= 55) {
+                if (d <= 20) return 3.5; if (d <= 30) return 3.0; if (d <= 40) return 2.5; return 2.2;
+            } else {
+                if (d <= 20) return 3.0; if (d <= 30) return 2.5; if (d <= 40) return 2.2; return 2.0;
+            }
+        }
+
+        function computeStatsAtFlowTemp(hourlyResults, flowTemp, maxOutput, pricePennies) {
+            let totalElec = 0, totalHeat = 0;
+            for (const h of hourlyResults) {
+                if (h.heatLoss > 0) {
+                    const delivered = Math.min(h.heatLoss, maxOutput);
+                    const cop = clientGetCoP(flowTemp, h.outdoorTemp);
+                    totalElec += delivered / cop;
+                    totalHeat += delivered;
+                }
+            }
+            return {
+                avgCop: totalElec > 0 ? totalHeat / totalElec : 0,
+                electricalEnergy: totalElec,
+                annualCost: (totalElec * pricePennies) / 100
+            };
+        }
+
+        function renderFlowTempComparison(result, formData) {
+            const currentFlowTemp = parseFloat(formData.flowTemp) || 45;
+            const maxOutput       = parseFloat(formData.maxOutput) || 8;
+            const pricePennies    = result.electricityPricePennies || 28.6;
+
+            const scenarios = [
+                { temp: 35, label: 'Underfloor heating', badge: 'Most efficient' },
+                { temp: 45, label: 'Low-temp radiators',  badge: 'Balanced' },
+                { temp: 55, label: 'Standard radiators',  badge: 'Least efficient' }
+            ];
+
+            const grid = document.getElementById('flowtempGrid');
+            grid.innerHTML = '';
+
+            const stats = scenarios.map(s => ({
+                ...s,
+                ...computeStatsAtFlowTemp(result.hourlyResults, s.temp, maxOutput, pricePennies)
+            }));
+
+            stats.forEach(s => {
+                const isActive = Math.abs(s.temp - currentFlowTemp) < 10;
+                grid.insertAdjacentHTML('beforeend', `
+                    <div class="flowtemp-card ${isActive ? 'active' : ''}">
+                        <div class="ft-temp">${s.temp}°C</div>
+                        <div class="ft-label">${s.label}</div>
+                        <div class="ft-badge">${isActive ? '▶ your selection' : s.badge}</div>
+                        <div class="ft-row">
+                            <span class="ft-rlabel">Avg CoP</span>
+                            <span class="ft-rval">${s.avgCop.toFixed(2)}</span>
+                        </div>
+                        <div class="ft-row">
+                            <span class="ft-rlabel">Electricity</span>
+                            <span class="ft-rval">${s.electricalEnergy.toFixed(0)} kWh/yr</span>
+                        </div>
+                        <div class="ft-row">
+                            <span class="ft-rlabel">Running cost</span>
+                            <span class="ft-rval">£${s.annualCost.toFixed(0)}/yr</span>
+                        </div>
+                    </div>
+                `);
+            });
+
+            // Insight: saving from 55→35°C
+            const saving = stats[2].annualCost - stats[0].annualCost;
+            const insightEl = document.getElementById('ftInsight');
+            if (saving > 0) {
+                insightEl.textContent =
+                    `💡 Switching from standard radiators (55°C) to underfloor heating (35°C) ` +
+                    `could save £${saving.toFixed(0)}/year on running costs — ` +
+                    `a ${((saving / stats[2].annualCost) * 100).toFixed(0)}% reduction.`;
+                insightEl.style.display = '';
+            }
+        }
+
+        // ─── Gas vs Heat Pump Comparison ──────────────────────────────────
+        function renderGasComparison(result, formData) {
+            const GAS_CARBON_KG   = 0.204;  // kg CO₂ per kWh of gas burned
+            const GRID_CARBON_KG  = 0.233;  // kg CO₂ per kWh of UK grid electricity (2024)
+            const BOILER_EFF      = 0.88;   // standard condensing boiler efficiency
+
+            const gasPrice        = parseFloat(formData.gasPrice) || 5.5;
+            const elecPrice       = result.electricityPricePennies || 28.6;
+
+            // Gas boiler: needs more fuel because efficiency < 100%
+            const gasEnergyNeeded = result.totalHeatEnergy / BOILER_EFF; // kWh of gas
+            const gasCost         = (gasEnergyNeeded * gasPrice) / 100;
+            const gasCO2          = gasEnergyNeeded * GAS_CARBON_KG;
+
+            // Heat pump
+            const hpCost          = result.annualCostPounds;
+            const hpCO2           = result.electricalEnergy * GRID_CARBON_KG;
+
+            const annualSaving    = gasCost - hpCost;
+            const co2Saving       = gasCO2 - hpCO2;
+
+            // Relatable CO₂ equivalent — short-haul flight ≈ 255 kg CO₂ per passenger
+            const flights = Math.round(co2Saving / 255);
+            let equivText = '';
+            if (flights > 0) {
+                equivText = `≈ ${flights} short-haul flight${flights > 1 ? 's' : ''} avoided per year`;
+            } else {
+                const trees = Math.round(co2Saving / 21); // avg tree absorbs ~21 kg/year
+                equivText = trees > 0 ? `≈ planting ${trees} tree${trees > 1 ? 's' : ''} per year` : '';
+            }
+
+            document.getElementById('gcHpCost').textContent  = `£${hpCost.toFixed(0)}`;
+            document.getElementById('gcHpCop').textContent   = result.averageCoP.toFixed(2);
+            document.getElementById('gcHpCo2').textContent   = `${(hpCO2 / 1000).toFixed(2)} t CO₂/yr`;
+            document.getElementById('gcGasCost').textContent = `£${gasCost.toFixed(0)}`;
+            document.getElementById('gcGasCo2').textContent  = `${(gasCO2 / 1000).toFixed(2)} t CO₂/yr`;
+
+            const savingEl = document.getElementById('gcSaving');
+            savingEl.textContent = annualSaving >= 0
+                ? `£${annualSaving.toFixed(0)}`
+                : `-£${Math.abs(annualSaving).toFixed(0)}`;
+            savingEl.style.color = annualSaving >= 0 ? '#66bb6a' : '#ffa726';
+
+            document.getElementById('gcCo2Saving').textContent =
+                `${(co2Saving / 1000).toFixed(2)} t CO₂`;
+            document.getElementById('gcEquiv').textContent = equivText;
+        }
+
+        function renderHeatLossVisual(params) {
+            const wallUA = params.wallArea * params.wallU;
+            const roofUA = params.roofArea * params.roofU;
+            const floorUA = params.floorArea * params.floorU;
+            const totalUA = wallUA + roofUA + floorUA;
+            if (totalUA === 0) return;
+            const wallPct = (wallUA / totalUA) * 100;
+            const roofPct = (roofUA / totalUA) * 100;
+            const floorPct = (floorUA / totalUA) * 100;
+            function uColour(u) {
+                if (u < 0.2) return '#4fc3f7';
+                if (u < 0.35) return '#ffa726';
+                return '#ef5350';
+            }
+            document.getElementById('svgRoof').setAttribute('fill', uColour(params.roofU) + '33');
+            document.getElementById('svgRoof').setAttribute('stroke', uColour(params.roofU));
+            document.getElementById('svgRoofVal').textContent = `U=${params.roofU} · ${roofPct.toFixed(0)}% of loss`;
+            document.getElementById('svgWalls').setAttribute('fill', uColour(params.wallU) + '33');
+            document.getElementById('svgWalls').setAttribute('stroke', uColour(params.wallU));
+            document.getElementById('svgWallsVal').textContent = `U=${params.wallU} · ${wallPct.toFixed(0)}% of loss`;
+            document.getElementById('svgFloor').setAttribute('fill', uColour(params.floorU) + '33');
+            document.getElementById('svgFloor').setAttribute('stroke', uColour(params.floorU));
+            document.getElementById('svgFloorVal').textContent = `U=${params.floorU}`;
+            document.getElementById('heatArrows').setAttribute('opacity', '1');
+            document.getElementById('roofBar').style.width = roofPct + '%';
+            document.getElementById('roofBar').style.background = uColour(params.roofU);
+            document.getElementById('roofPct').textContent = `${roofPct.toFixed(1)}%  (UA=${roofUA.toFixed(0)} W/K)`;
+            document.getElementById('wallsBar').style.width = wallPct + '%';
+            document.getElementById('wallsBar').style.background = uColour(params.wallU);
+            document.getElementById('wallsPct').textContent = `${wallPct.toFixed(1)}%  (UA=${wallUA.toFixed(0)} W/K)`;
+            document.getElementById('floorBar').style.width = floorPct + '%';
+            document.getElementById('floorBar').style.background = uColour(params.floorU);
+            document.getElementById('floorPct').textContent = `${floorPct.toFixed(1)}%  (UA=${floorUA.toFixed(0)} W/K)`;
+            document.getElementById('uaValue').textContent = `${totalUA.toFixed(0)} W/K`;
+        }
+    </script>
+</body>
+
+</html>
