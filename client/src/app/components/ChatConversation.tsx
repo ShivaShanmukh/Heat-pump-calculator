@@ -299,6 +299,12 @@ export function ChatConversation() {
 
   return (
     <div className="w-full max-w-3xl mx-auto px-6">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-[#0A4D5C]">Estimate your heat pump size in minutes</h1>
+        <p className="text-sm text-[#6B7280] mt-1">Based on UK climate data and your home's insulation — no jargon needed.</p>
+      </div>
+
       {/* Expert Mode Toggle */}
       <div className="flex justify-end items-center gap-3 mb-4">
         <span className="text-sm text-[#6B7280]">Expert Mode</span>
