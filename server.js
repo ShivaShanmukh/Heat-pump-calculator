@@ -14,7 +14,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-console.log('API key loaded:', ANTHROPIC_API_KEY ? `${ANTHROPIC_API_KEY.slice(0, 12)}... (length: ${ANTHROPIC_API_KEY.length})` : 'NOT SET');
 
 async function anthropicChat(messages) {
     // Anthropic uses a separate system param — extract it from the messages array
