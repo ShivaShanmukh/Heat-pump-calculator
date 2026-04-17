@@ -438,6 +438,28 @@
             cursor: not-allowed;
         }
 
+        .chat-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 0 4px 10px;
+        }
+
+        .chip {
+            background: rgba(102, 126, 234, 0.10);
+            border: 1px solid rgba(102, 126, 234, 0.30);
+            color: #c5cbee;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .chip:hover {
+            background: rgba(102, 126, 234, 0.22);
+        }
+
         /* ── Gas vs HP Comparison ───────────────────────────────────── */
         .gas-compare-grid {
             display: grid;
@@ -797,6 +819,14 @@
         <!-- ── Chat UI ───────────────────────────────────────────────── -->
         <div class="chat-container" id="chatPanel">
             <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-suggestions" id="chatSuggestions">
+                <button type="button" class="chip" data-q="I have a 3-bed semi in London, 1970s, cavity wall insulation and loft insulation.">Describe my home</button>
+                <button type="button" class="chip" data-q="How much does a heat pump cost to install in the UK?">Cost &amp; grants?</button>
+                <button type="button" class="chip" data-q="Will my existing radiators work with a heat pump?">Will my radiators work?</button>
+                <button type="button" class="chip" data-q="Do heat pumps work in very cold weather?">Works in cold weather?</button>
+                <button type="button" class="chip" data-q="How noisy is a heat pump and do I need planning permission?">Noise &amp; planning?</button>
+                <button type="button" class="chip" data-q="Air source or ground source heat pump — which should I choose?">Air vs ground source?</button>
+            </div>
             <div class="chat-input-row">
                 <input type="text" id="chatInput" placeholder="Describe your building or ask a question…" autocomplete="off">
                 <button type="button" class="chat-send-btn" id="chatSendBtn">Send</button>
@@ -1315,9 +1345,25 @@
 
         // Opening greeting from assistant
         appendBubble(
-            "Hi! I can help size your heat pump. Tell me about your building — where it is, roughly how big it is, and what heat pump you're considering. Or just start with your location and I'll guide you through the rest.",
+            "Hi! I can help size a heat pump for your home — and answer questions about cost, grants, noise, planning, radiators, cold-weather performance, or anything else you're wondering about.\n\nTap a suggestion below, or just start describing your home.",
             'assistant'
         );
+
+        // ─── Suggestion chips ─────────────────────────────────────────────
+        document.querySelectorAll('#chatSuggestions .chip').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const q = btn.getAttribute('data-q');
+                // Hide all chips after the first click — keep the conversation clean
+                document.getElementById('chatSuggestions').style.display = 'none';
+                sendChat(q);
+            });
+        });
+
+        // Also hide chips when the user types their own first message
+        document.getElementById('chatInput').addEventListener('input', () => {
+            const chips = document.getElementById('chatSuggestions');
+            if (chips) chips.style.display = 'none';
+        }, { once: true });
 
         // ─── State ────────────────────────────────────────────────────────
         let lastResult = null;
