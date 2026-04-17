@@ -382,6 +382,7 @@
             border-radius: 12px;
             font-size: 14px;
             line-height: 1.5;
+            white-space: pre-wrap;
         }
 
         .chat-bubble.assistant {
@@ -1242,9 +1243,16 @@
                     // Progressively fill any fields the AI has inferred so far
                     if (data.params && Object.keys(data.params).length > 0) {
                         const newlyFilled = fillFormFields(data.params);
-                        if (newlyFilled.length > 0) {
+                        // Hide the system-note when only silent defaults changed —
+                        // the user doesn't need to see boilerplate fields being set.
+                        const SILENT_FIELDS = new Set(['baseTemp','indoorTemp','thresholdHours','electricityPrice','gasPrice']);
+                        const userVisible = newlyFilled.filter(s => {
+                            const name = s.split('=')[0];
+                            return !SILENT_FIELDS.has(name);
+                        });
+                        if (userVisible.length > 0) {
                             appendBubble(
-                                `📋 Filled in expert form: ${newlyFilled.join(', ')}`,
+                                `📋 Filled in expert form: ${userVisible.join(', ')}`,
                                 'system-note'
                             );
                         }
