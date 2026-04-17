@@ -460,6 +460,22 @@
             background: rgba(102, 126, 234, 0.22);
         }
 
+        .run-calc-cta {
+            margin-left: 8px;
+            background: #667eea;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .run-calc-cta:hover {
+            background: #5568d3;
+        }
+
         /* ── Gas vs HP Comparison ───────────────────────────────────── */
         .gas-compare-grid {
             display: grid;
@@ -1287,6 +1303,13 @@
                             );
                         }
                     }
+
+                    // If the form already has all required values, offer a manual
+                    // "Run calculation now" button so the user isn't stuck if the
+                    // bot doesn't transition to type="ready" on its own.
+                    if (formHasAllRequiredFields()) {
+                        showRunCalcCta();
+                    }
                 }
 
             } catch (err) {
@@ -1326,6 +1349,36 @@
             document.getElementById('heatPumpForm').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
             // Switch to expert view so results make sense with the filled form
             document.getElementById('btnExpert').click();
+        }
+
+        const REQUIRED_FIELDS = ['wallArea','wallU','roofArea','roofU','floorArea','floorU',
+                                 'latitude','longitude','flowTemp','maxOutput'];
+
+        function formHasAllRequiredFields() {
+            return REQUIRED_FIELDS.every(f => {
+                const el = document.getElementById(f);
+                return el && el.value !== '' && !isNaN(parseFloat(el.value));
+            });
+        }
+
+        let runCalcCtaShown = false;
+        function showRunCalcCta() {
+            if (runCalcCtaShown) return;
+            runCalcCtaShown = true;
+            const msgs = document.getElementById('chatMessages');
+            const wrap = document.createElement('div');
+            wrap.className = 'chat-bubble system-note';
+            wrap.innerHTML = 'Everything looks filled in. <button type="button" class="run-calc-cta">Run calculation now →</button>';
+            msgs.appendChild(wrap);
+            msgs.scrollTop = msgs.scrollHeight;
+            wrap.querySelector('.run-calc-cta').addEventListener('click', () => {
+                const params = {};
+                for (const f of FORM_FIELDS) {
+                    const el = document.getElementById(f);
+                    if (el && el.value !== '') params[f] = parseFloat(el.value);
+                }
+                populateFormAndCalculate(params);
+            });
         }
 
         document.getElementById('chatSendBtn').addEventListener('click', () => {

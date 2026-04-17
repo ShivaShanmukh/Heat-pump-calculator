@@ -29,7 +29,7 @@ async function anthropicChat(messages) {
         },
         body: JSON.stringify({
             model: 'claude-haiku-4-5-20251001',
-            max_tokens: 500,
+            max_tokens: 1500,
             system,
             messages: convo
         })
@@ -138,7 +138,36 @@ While gathering info:
 Once the user has confirmed U-values AND you have all required fields:
 {"type":"ready","reply":"Thanks — running the calculation now.","params":{"wallArea":120,"wallU":0.45,"roofArea":80,"roofU":0.25,"floorArea":80,"floorU":0.35,"latitude":51.5074,"longitude":-0.1278,"flowTemp":45,"maxOutput":8,"baseTemp":14,"indoorTemp":20,"electricityPrice":28.6,"thresholdHours":24},"summary":"A 3-bed semi in London, 1970s, cavity wall + loft insulated, radiators with 8 kW pump."}
 
-Remember: the user should LEARN something about their home from this chat. Don't skip the U-value conversation.`;
+Remember: the user should LEARN something about their home from this chat. Don't skip the U-value conversation.
+
+TRANSITION TO CALCULATION — CRITICAL
+As soon as the user has (a) confirmed the U-values and (b) provided flowTemp/heating type and maxOutput, your VERY NEXT reply MUST be type="ready" with all 14 params populated. Do not ask more questions after that point. If you've already proposed U-values and the user replied positively ("yes", "sounds right", "sure", "ok"), treat that as confirmation.`;
+
+// Attempts several strategies to pull a JSON object out of a model response.
+// Returns the parsed object, or null if nothing salvageable was found.
+function extractJson(text) {
+    if (!text) return null;
+
+    // 1. Strip markdown code fences if present
+    let candidate = text
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```\s*$/i, '')
+        .trim();
+
+    // 2. Straight parse
+    try { return JSON.parse(candidate); } catch {}
+
+    // 3. Find the largest {...} substring and try that (handles models that
+    //    wrap JSON in prose like "Sure, here's the result: {...}").
+    const first = candidate.indexOf('{');
+    const last = candidate.lastIndexOf('}');
+    if (first !== -1 && last > first) {
+        const slice = candidate.slice(first, last + 1);
+        try { return JSON.parse(slice); } catch {}
+    }
+
+    return null;
+}
 
 app.use(express.json());
 
@@ -167,18 +196,16 @@ app.post('/api/interpret', async (req, res) => {
         const raw = completion.content[0].text.trim();
 
         // The system prompt instructs the model to ALWAYS return a single JSON object.
-        // We try to parse it; if it fails, we gracefully fall back to treating the
-        // whole output as a plain message.
-        let parsed = null;
-        try {
-            // Strip possible markdown code fences just in case
-            const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-            parsed = JSON.parse(cleaned);
-        } catch {
+        // In practice Claude sometimes wraps it in prose or code fences, so we try a
+        // few strategies before giving up.
+        const parsed = extractJson(raw);
+
+        if (!parsed) {
+            console.warn('[interpret] Could not parse JSON from model reply:', raw.slice(0, 400));
             return res.json({ type: 'message', text: raw, params: {} });
         }
 
-        if (parsed?.type === 'ready') {
+        if (parsed.type === 'ready') {
             return res.json({
                 type: 'ready',
                 text: parsed.reply || '',
@@ -189,8 +216,8 @@ app.post('/api/interpret', async (req, res) => {
 
         res.json({
             type: 'message',
-            text: parsed?.reply || '',
-            params: parsed?.params || {}
+            text: parsed.reply || '',
+            params: parsed.params || {}
         });
 
     } catch (error) {
