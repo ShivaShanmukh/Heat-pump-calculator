@@ -1230,14 +1230,25 @@
                 if (data.type === 'ready') {
                     // AI has enough info — populate form and run calculation
                     chatHistory.push({ role: 'assistant', content: JSON.stringify(data) });
+                    if (data.text) appendBubble(data.text, 'assistant');
                     appendBubble(
-                        `Great — I have everything I need! Running the calculation now…\n\n${data.summary || ''}`,
+                        `Running the calculation now…${data.summary ? '\n\n' + data.summary : ''}`,
                         'system-note'
                     );
                     populateFormAndCalculate(data.params);
                 } else {
                     chatHistory.push({ role: 'assistant', content: data.text });
-                    appendBubble(data.text, 'assistant');
+                    if (data.text) appendBubble(data.text, 'assistant');
+                    // Progressively fill any fields the AI has inferred so far
+                    if (data.params && Object.keys(data.params).length > 0) {
+                        const newlyFilled = fillFormFields(data.params);
+                        if (newlyFilled.length > 0) {
+                            appendBubble(
+                                `📋 Filled in expert form: ${newlyFilled.join(', ')}`,
+                                'system-note'
+                            );
+                        }
+                    }
                 }
 
             } catch (err) {
@@ -1249,14 +1260,30 @@
             }
         }
 
-        function populateFormAndCalculate(params) {
-            const fields = ['wallArea','wallU','roofArea','roofU','floorArea','floorU',
-                            'latitude','longitude','flowTemp','maxOutput','baseTemp',
-                            'indoorTemp','electricityPrice','thresholdHours'];
-            for (const f of fields) {
+        const FORM_FIELDS = ['wallArea','wallU','roofArea','roofU','floorArea','floorU',
+                             'latitude','longitude','flowTemp','maxOutput','baseTemp',
+                             'indoorTemp','electricityPrice','thresholdHours','gasPrice'];
+
+        // Fills expert-mode form fields from a (possibly partial) params object.
+        // Returns an array of "name=value" strings for any fields that were
+        // newly set or changed, so the chat UI can surface them to the user.
+        function fillFormFields(params) {
+            const newlyFilled = [];
+            for (const f of FORM_FIELDS) {
                 const el = document.getElementById(f);
-                if (el && params[f] !== undefined) el.value = params[f];
+                if (!el) continue;
+                const v = params[f];
+                if (v === undefined || v === null || v === '') continue;
+                if (String(el.value) !== String(v)) {
+                    el.value = v;
+                    newlyFilled.push(`${f}=${v}`);
+                }
             }
+            return newlyFilled;
+        }
+
+        function populateFormAndCalculate(params) {
+            fillFormFields(params);
             // Trigger calculation via the form submit event
             document.getElementById('heatPumpForm').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
             // Switch to expert view so results make sense with the filled form

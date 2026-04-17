@@ -41,26 +41,44 @@ async function anthropicChat(messages) {
     return res.json();
 }
 
-const SYSTEM_PROMPT = `You are a friendly heat pump sizing assistant. Your job is to gather the building details needed to run a heat pump sizing calculation, then return them as structured JSON.
+const SYSTEM_PROMPT = `You are a concise heat pump sizing assistant. Your goal: get to a calculation in as FEW exchanges as possible (ideally 2–3 total user turns). Be brief, infer aggressively, and group related questions together.
 
-You need to collect these parameters:
-- wallArea (m²), wallU (W/m²K) — wall surface area and insulation U-value
-- roofArea (m²), roofU (W/m²K) — roof surface area and U-value
-- floorArea (m²), floorU (W/m²K) — floor surface area and U-value
-- latitude and longitude — location coordinates (you can infer from a city name)
-- flowTemp (°C) — heat pump flow temperature, typically 35–55°C
-- maxOutput (kW) — the heat pump capacity the user wants to evaluate
-- baseTemp (°C) — outdoor temperature below which heating is needed, typically 14–16°C
-- indoorTemp (°C) — desired indoor temperature, typically 20°C
-- electricityPrice (p/kWh) — UK default is 28.6
-- thresholdHours — max hours/year the pump can be over-capacity, default 24
+Parameters you eventually need:
+- wallArea, wallU, roofArea, roofU, floorArea, floorU (areas in m², U-values in W/m²K)
+- latitude, longitude (infer from city name)
+- flowTemp (°C, typically 35 for underfloor, 45 for modern radiators, 55 for older rads)
+- maxOutput (kW)
+- baseTemp=14, indoorTemp=20, thresholdHours=24, electricityPrice=28.6 — ALWAYS use these defaults silently, never ask.
 
-Ask questions conversationally, one or two at a time. Make reasonable assumptions for defaults (indoorTemp=20, baseTemp=14, thresholdHours=24, electricityPrice=28.6) and tell the user what you're assuming.
+Ask at most these three grouped questions (skip any you already know):
+1. Property type + city + age — e.g. "What kind of home, where, and roughly what era? (e.g. 3-bed semi in London, 1970s)"
+2. Insulation level — "Is it well insulated, average, or poorly insulated?"
+3. Heating system + pump size — "Underfloor heating or radiators, and what pump size are you considering (kW)?"
 
-When you have enough information (at minimum: wall/roof/floor areas and U-values, location, flowTemp, maxOutput), respond with ONLY valid JSON in this exact format — no markdown, no explanation:
-{"type":"ready","params":{"wallArea":120,"wallU":0.2,"roofArea":80,"roofU":0.15,"floorArea":80,"floorU":0.18,"latitude":51.5074,"longitude":-0.1278,"flowTemp":45,"maxOutput":8,"baseTemp":14,"indoorTemp":20,"electricityPrice":28.6,"thresholdHours":24},"summary":"A 3-bed semi in London..."}
+INFER DEFAULTS from what the user says — do NOT ask about U-values or areas directly.
 
-While still gathering info, respond with plain conversational text only — no JSON.`;
+U-values by age/insulation:
+  Pre-1920 uninsulated: wallU=1.5, roofU=0.8, floorU=0.7
+  1920–1980 basic: wallU=0.8, roofU=0.4, floorU=0.5
+  1980–2000 cavity+loft: wallU=0.45, roofU=0.25, floorU=0.35
+  2000+ modern: wallU=0.25, roofU=0.15, floorU=0.2
+  Retrofit / well-insulated: wallU=0.2, roofU=0.15, floorU=0.18
+
+Typical areas by property type:
+  Flat: wallArea=40, roofArea=0, floorArea=60
+  Terrace/mid-terrace: wallArea=80, roofArea=50, floorArea=50
+  Semi-detached (3-bed): wallArea=120, roofArea=80, floorArea=80
+  Detached (4-bed): wallArea=180, roofArea=100, floorArea=100
+
+RESPONSE FORMAT — ALWAYS reply with a single JSON object only. No markdown, no prose outside JSON.
+
+While gathering info:
+{"type":"message","reply":"<one short sentence question or acknowledgement>","params":{<any fields you've inferred so far — include as many as possible>}}
+
+When you have ALL required fields (wall/roof/floor areas + U-values, lat/long, flowTemp, maxOutput):
+{"type":"ready","reply":"Got everything — running the calculation now.","params":{"wallArea":120,"wallU":0.2,"roofArea":80,"roofU":0.15,"floorArea":80,"floorU":0.18,"latitude":51.5074,"longitude":-0.1278,"flowTemp":45,"maxOutput":8,"baseTemp":14,"indoorTemp":20,"electricityPrice":28.6,"thresholdHours":24},"summary":"A 3-bed semi in London, 1970s…"}
+
+Keep "reply" SHORT. Populate "params" with every field you can infer, even partially — the UI fills the form live as you learn things.`;
 
 app.use(express.json());
 
@@ -86,19 +104,34 @@ app.post('/api/interpret', async (req, res) => {
 
     try {
         const completion = await anthropicChat(messages);
-        const reply = completion.content[0].text.trim();
+        const raw = completion.content[0].text.trim();
 
-        // Detect if the model returned a ready JSON payload
-        if (reply.startsWith('{') && reply.includes('"type":"ready"')) {
-            try {
-                const parsed = JSON.parse(reply);
-                return res.json({ type: 'ready', params: parsed.params, summary: parsed.summary });
-            } catch {
-                // Fall through and return as plain text if JSON parse fails
-            }
+        // The system prompt instructs the model to ALWAYS return a single JSON object.
+        // We try to parse it; if it fails, we gracefully fall back to treating the
+        // whole output as a plain message.
+        let parsed = null;
+        try {
+            // Strip possible markdown code fences just in case
+            const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+            parsed = JSON.parse(cleaned);
+        } catch {
+            return res.json({ type: 'message', text: raw, params: {} });
         }
 
-        res.json({ type: 'message', text: reply });
+        if (parsed?.type === 'ready') {
+            return res.json({
+                type: 'ready',
+                text: parsed.reply || '',
+                params: parsed.params || {},
+                summary: parsed.summary || ''
+            });
+        }
+
+        res.json({
+            type: 'message',
+            text: parsed?.reply || '',
+            params: parsed?.params || {}
+        });
 
     } catch (error) {
         console.error('Anthropic error:', error);
